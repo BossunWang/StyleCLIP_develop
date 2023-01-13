@@ -123,7 +123,7 @@ def main():
     print('Model successfully loaded!')
 
     # @title Align image
-    image_path = "/media/user/HGST/Bossun/face_dataset/Emotion/RAF-DB/basic-20201119T055425Z-001/basic/Image/original/train_09860.jpg"  # @param {type: "string"}
+    image_path = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/Image/original/train_09860.jpg"  # @param {type: "string"}
     original_image = Image.open(image_path)
     original_image = original_image.convert("RGB")
     predictor = dlib.shape_predictor("pretrained/shape_predictor_68_face_landmarks.dat")
@@ -176,7 +176,7 @@ def main():
     # input text description
     neutral = 'face'  # @param {type:"string"}
     # target = 'smiling face'  # @param {type:"string"}
-    target = 'a face that looks fearful'  # @param {type:"string"}
+    target = 'surprised face'  # @param {type:"string"}
     classnames = [target, neutral]
     dt = GetDt(classnames, model)
 

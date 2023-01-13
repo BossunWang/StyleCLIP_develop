@@ -22,7 +22,8 @@ import torch.nn.functional as F
 from PIL import Image
 import sys
 
-sys.path.append("/w/Bossun/StyleCLIP_develop/global_torch")
+abs_path = os.getcwd().split('StyleCLIP_develop')[0]
+sys.path.append(os.path.join(abs_path, 'StyleCLIP_develop', 'global_torch'))
 
 import dnnlib
 import legacy
