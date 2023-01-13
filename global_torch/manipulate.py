@@ -20,6 +20,9 @@ import PIL.Image
 import torch
 import torch.nn.functional as F
 from PIL import Image
+import sys
+
+sys.path.append("/w/Bossun/StyleCLIP_develop/global_torch")
 
 import dnnlib
 import legacy
