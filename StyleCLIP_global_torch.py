@@ -176,7 +176,7 @@ def main():
     # input text description
     neutral = 'face'  # @param {type:"string"}
     # target = 'smiling face'  # @param {type:"string"}
-    target = 'surprised face'  # @param {type:"string"}
+    target = 'frog face'  # @param {type:"string"}
     classnames = [target, neutral]
     dt = GetDt(classnames, model)
 
