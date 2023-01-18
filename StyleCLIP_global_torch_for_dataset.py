@@ -364,7 +364,7 @@ def run(source_neutral_dir
         , experiment_type
         , resize_dims
         , EXPERIMENT_ARGS
-        , target_alpha
+        , alphas
         , betas
         , fs3
         , num_frames
@@ -376,7 +376,7 @@ def run(source_neutral_dir
     for root, dirs, files in os.walk(source_neutral_dir):
         for name in files:
             image_path = os.path.join(root, name)
-            target_path = os.path.join(target_dir, emotion_list[6], name)
+            target_path = os.path.join(target_dir, emotion_list[-1], name)
 
             # @title Align image
             original_image = Image.open(image_path)
@@ -438,14 +438,13 @@ def run(source_neutral_dir
 
                     print("best beta:", best_beta)
                     print("best_num_c:", best_num_c)
-                    alphas = np.linspace(0, target_alpha, num_frames)
                     beta = best_beta
 
                     print("Generating Frames:")
                     for ai, alpha in tqdm(enumerate(alphas), total=num_frames):
                         image_name = name.replace(".jpg", "_{}_ev_{}.jpg".format(tj, ai))
                         if ai <= 2 and ti == 4 and tj == 0:
-                            save_path = os.path.join(target_dir, emotion_list[6], image_name)
+                            save_path = os.path.join(target_dir, emotion_list[-1], image_name)
                         elif ai >= 3:
                             save_path = os.path.join(target_dir, emotion_list[ti], image_name)
                         else:
@@ -453,6 +452,100 @@ def run(source_neutral_dir
                         # print(save_path)
                         output_image = gen_image(fs3, dt, M, dlatent_tmp, beta, alpha)
                         inference_onnx(ort_session, output_image, save_path)
+
+
+def run_neutral(source_neutral_dir
+                , target_dir
+                , target_latent_dir
+                , emotion_list
+                , target_prompt_list
+                , neutral
+                , experiment_type
+                , resize_dims
+                , EXPERIMENT_ARGS
+                , alpha
+                , betas
+                , fs3
+                , num_frames
+                , predictor
+                , net
+                , clip_model
+                , M
+                , ort_session):
+    for root, dirs, files in os.walk(source_neutral_dir):
+        for name in files:
+            image_path = os.path.join(root, name)
+            target_path = os.path.join(target_dir, emotion_list[-1], name)
+
+            # @title Align image
+            original_image = Image.open(image_path)
+            original_image = original_image.convert("RGB")
+
+            if experiment_type == "ffhq_encode":
+                input_image = run_alignment(image_path, predictor)
+            else:
+                input_image = original_image
+
+            if input_image is None:
+                continue
+
+            input_image.resize(resize_dims)
+            # input_image.save(target_path)
+
+            # @title Invert the image
+            img_transforms = EXPERIMENT_ARGS['transform']
+            transformed_image = img_transforms(input_image)
+
+            with torch.no_grad():
+                images, latents = run_on_batch(transformed_image.unsqueeze(0), net, experiment_type)
+                result_image, latent = images[0], latents[0]
+            latent_path = target_latent_dir + '/{}_latents.pt'.format(image_path.split("/")[-1].replace(".jpg", ""))
+            if not os.path.exists(latent_path):
+                torch.save(latents, latent_path)
+
+            # Choose Mode (and show input image)
+            img_index = 0
+            latents = torch.load(latent_path)
+            dlatents_loaded = M.G.synthesis.W2S(latents)
+
+            img_indexs = [img_index]
+            dlatents_loaded = M.S2List(dlatents_loaded)
+            dlatent_tmp = [tmp[img_indexs] for tmp in dlatents_loaded]
+            M.num_images = len(img_indexs)
+
+            M.alpha = [0]
+            M.manipulate_layers = [0]
+            codes, out = M.EditOneC(0, dlatent_tmp)
+            M.manipulate_layers = None
+
+            for ti, target_prompts in enumerate(target_prompt_list):
+                for tj, target_prompt in enumerate(target_prompts):
+                    classnames = [target_prompt, neutral]
+                    dt = GetDt(classnames, clip_model)
+                    print(classnames)
+
+                    # video
+                    # Renders a video interpolating from the base image with provided beta to the target_alpha.
+                    # (target_alpha can be positive or negative)
+                    best_beta = 0.08
+                    best_num_c = 0
+                    for b in betas:
+                        num_c = GetBoundaryNum(fs3, dt, b)
+                        if 0 < num_c < 500:
+                            best_beta = b
+                            best_num_c = num_c
+
+                    print("best beta:", best_beta)
+                    print("best_num_c:", best_num_c)
+                    beta = best_beta
+
+                    print("Generating Frames:")
+                    image_name = name.replace(".png", "_{}_ev_{}.png".format(tj, 0))
+                    save_path = os.path.join(target_dir, emotion_list[ti], image_name)
+                    # print(save_path)
+                    output_image = gen_image(fs3, dt, M, dlatent_tmp, beta, alpha)
+                    output_image = cv2.resize(output_image, (256, 256))
+                    cv2.imwrite(save_path, output_image)
 
 
 def main():
@@ -531,56 +624,88 @@ def main():
     onnx_path = "../Face_Detection_Project/yolov5_face/log_yolov5n-0.5/train_uc_append_masked_data/exp/weights/best_640.onnx"
     ort_session = onnxruntime.InferenceSession(onnx_path)
 
-    source_train_neutral_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/org_train_class/neutral"
-    source_test_neutral_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/org_test_class/neutral"
-    target_train_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated/train_class_aligned"
-    target_test_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated/test_class_aligned"
-    target_latent_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated_latents"
+    # source_train_neutral_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/org_train_class/neutral"
+    # source_test_neutral_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/org_test_class/neutral"
+    # target_train_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated/train_class_aligned"
+    # target_test_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated/test_class_aligned"
+    # target_latent_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated_latents"
+    # os.makedirs(target_latent_dir, exist_ok=True)
+    # os.makedirs(target_train_dir, exist_ok=True)
+    # os.makedirs(target_test_dir, exist_ok=True)
+    #
+    # for emotion_name in emotion_list:
+    #     os.makedirs(os.path.join(target_train_dir, emotion_name), exist_ok=True)
+    #     os.makedirs(os.path.join(target_test_dir, emotion_name), exist_ok=True)
+
+    # run(source_train_neutral_dir
+    #     , target_train_dir
+    #     , target_latent_dir
+    #     , emotion_list
+    #     , target_prompt_list
+    #     , neutral
+    #     , experiment_type
+    #     , resize_dims
+    #     , EXPERIMENT_ARGS
+    #     , alphas
+    #     , betas
+    #     , fs3
+    #     , num_frames
+    #     , predictor
+    #     , net
+    #     , clip_model
+    #     , M
+    #     , ort_session)
+    #
+    # run(source_test_neutral_dir
+    #     , target_test_dir
+    #     , target_latent_dir
+    #     , emotion_list
+    #     , target_prompt_list
+    #     , neutral
+    #     , experiment_type
+    #     , resize_dims
+    #     , EXPERIMENT_ARGS
+    #     , alphas
+    #     , betas
+    #     , fs3
+    #     , num_frames
+    #     , predictor
+    #     , net
+    #     , clip_model
+    #     , M
+    #     , ort_session)
+
+    emotion_list = ["neutral"]
+    target_prompt_list = [
+        ['bored face'],
+    ]
+
+    source_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/FFHQ/images256x256"
+    target_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/FFHQ/generate"
+    target_latent_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/FFHQ/target_latents"
     os.makedirs(target_latent_dir, exist_ok=True)
-    os.makedirs(target_train_dir, exist_ok=True)
-    os.makedirs(target_test_dir, exist_ok=True)
-
+    os.makedirs(target_dir, exist_ok=True)
     for emotion_name in emotion_list:
-        os.makedirs(os.path.join(target_train_dir, emotion_name), exist_ok=True)
-        os.makedirs(os.path.join(target_test_dir, emotion_name), exist_ok=True)
+        os.makedirs(os.path.join(target_dir, emotion_name), exist_ok=True)
 
-    run(source_train_neutral_dir
-        , target_train_dir
-        , target_latent_dir
-        , emotion_list
-        , target_prompt_list
-        , neutral
-        , experiment_type
-        , resize_dims
-        , EXPERIMENT_ARGS
-        , target_alpha
-        , betas
-        , fs3
-        , num_frames
-        , predictor
-        , net
-        , clip_model
-        , M
-        , ort_session)
-
-    run(source_test_neutral_dir
-        , target_test_dir
-        , target_latent_dir
-        , emotion_list
-        , target_prompt_list
-        , neutral
-        , experiment_type
-        , resize_dims
-        , EXPERIMENT_ARGS
-        , target_alpha
-        , betas
-        , fs3
-        , num_frames
-        , predictor
-        , net
-        , clip_model
-        , M
-        , ort_session)
+    run_neutral(source_dir
+                , target_dir
+                , target_latent_dir
+                , emotion_list
+                , target_prompt_list
+                , "happy face"
+                , experiment_type
+                , resize_dims
+                , EXPERIMENT_ARGS
+                , target_alpha
+                , betas
+                , fs3
+                , num_frames
+                , predictor
+                , net
+                , clip_model
+                , M
+                , ort_session)
 
 
 if __name__ == '__main__':
