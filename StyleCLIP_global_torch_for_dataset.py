@@ -27,6 +27,8 @@ import dlib
 from encoder4editing.utils.alignment import align_face
 from arcface_transform_matrix import norm_crop
 
+# pip install dlib==19.20
+
 
 def run_alignment(image_path, predictor):
     aligned_image = align_face(filepath=image_path, predictor=predictor)
@@ -681,8 +683,8 @@ def main():
     ]
 
     source_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/FFHQ/images256x256"
-    target_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/FFHQ/generate"
-    target_latent_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/FFHQ/target_latents"
+    target_dir = "/media/glory/Bossun_D/dataset/face_dataset/FFHQ/generate"
+    target_latent_dir = "/media/glory/Bossun_D/dataset/face_dataset/FFHQ/target_latents"
     os.makedirs(target_latent_dir, exist_ok=True)
     os.makedirs(target_dir, exist_ok=True)
     for emotion_name in emotion_list:
