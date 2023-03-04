@@ -23,6 +23,7 @@ from PIL import Image
 import sys
 
 abs_path = os.getcwd().split('StyleCLIP_develop')[0]
+sys.path.append(os.path.join(abs_path, 'StyleCLIP_develop'))
 sys.path.append(os.path.join(abs_path, 'StyleCLIP_develop', 'global_torch'))
 
 import dnnlib
@@ -32,7 +33,7 @@ from visualizer import HtmlPageVisualizer
 
 from torch_utils import misc
 import types
-from training.networks import SynthesisNetwork,SynthesisBlock,SynthesisLayer,ToRGBLayer
+from global_torch.training.networks import SynthesisNetwork,SynthesisBlock,SynthesisLayer,ToRGBLayer
 
 
 def change_style_code(codes, layer, channel, step):
@@ -159,14 +160,16 @@ class Manipulator():
     
     
     def GenerateS(self,num_img=100):
-        seed=5
+        seed=15
         with torch.no_grad(): 
             z = torch.from_numpy(np.random.RandomState(seed).randn(num_img, self.G.z_dim)).to(self.device)
+            # print("z:", z.size())
             ws = self.G.mapping(z=z,c=None,truncation_psi=self.truncation_psi,truncation_cutoff=self.truncation_cutoff)
+            # print("ws:", ws.size())
             encoded_styles=self.G.synthesis.W2S(ws)
 #            encoded_styles=encoded_styles.cpu().numpy()
             
-        self.dlatents=S2List(encoded_styles)
+        self.dlatents = S2List(encoded_styles)
     
     def GenerateImg(self,codes):
         
@@ -215,6 +218,7 @@ class Manipulator():
         self.img_size=self.G.synthesis.block_resolutions[-1]
         
         self.mindexs=[0, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 20, 21,23,24]
+        # print("mindexs size:", len(self.mindexs))
         
         
     
@@ -222,11 +226,13 @@ class Manipulator():
         
         step=len(self.alpha)
         dlatent_tmp1=[tmp.reshape((self.num_images,-1)) for tmp in dlatent_tmp]
-        dlatent_tmp2=[np.tile(tmp[:,None],(1,step,1)) for tmp in dlatent_tmp1] # (10, 7, 512)
+        dlatent_tmp2=[np.tile(tmp[:,None],(1,step,1)) for tmp in dlatent_tmp1] # (10, 7, 512) num_imgs, alpha size, latent code dim
+        # print("dlatent_tmp2[0]:", dlatent_tmp2[0].shape)
 
         l=np.array(self.alpha)
         l=l.reshape(
                     [step if axis == 1 else 1 for axis in range(dlatent_tmp2[0].ndim)])
+        # print("l:", l.shape)
         
         if type(self.manipulate_layers)==int:
             tmp=[self.manipulate_layers]
@@ -238,12 +244,15 @@ class Manipulator():
             raise ValueError('manipulate_layers is wrong')
             
         for i in tmp:
+            # print("l*boundary_tmp[i]:", (l*boundary_tmp[i])[0, :,501])
             dlatent_tmp2[i]+=l*boundary_tmp[i]
         
         codes=[]
         for i in range(len(dlatent_tmp2)):
             tmp=list(dlatent_tmp[i].shape)
             tmp.insert(1,step)
+            # print("tmp:", tmp)
+            # print("dlatent_tmp2[i]:", dlatent_tmp2[i].shape)
             codes.append(dlatent_tmp2[i].reshape(tmp))
         return codes
     
@@ -265,7 +274,9 @@ class Manipulator():
         out=self.GenerateImg(codes)
         return codes,out
     
-    def EditOneC(self,cindex,dlatent_tmp=None): 
+    def EditOneC(self,cindex,dlatent_tmp=None):
+        # edit one channel one index only
+        # print("dlatents:", len(self.dlatents))
         if dlatent_tmp==None:
             dlatent_tmp=[tmp[self.img_index:(self.img_index+self.num_images)] for tmp in self.dlatents]
         
@@ -279,6 +290,7 @@ class Manipulator():
         tmp1=np.zeros(tmp)
         tmp1[cindex]=self.code_std[ml][cindex]  #1
         boundary_tmp[ml]=tmp1
+        # print("boundary_tmp change:", boundary_tmp[ml][cindex])
         
         codes=self.MSCode(dlatent_tmp,boundary_tmp)
         out=self.GenerateImg(codes)
@@ -347,7 +359,12 @@ class Manipulator():
     
 #%%
 if __name__ == "__main__":
-    network_pkl='/cs/labs/danix/wuzongze/Gan_Manipulation/stylegan2/model/stylegan2-ffhq-config-f.pkl'
+    # network_pkl = 'model/ffhq.pkl'
+    # network_pkl = 'model/stylegan2-lsun-cat-config-f.pkl'
+    network_pkl = 'model/afhqcat.pkl'
+    # network_pkl = 'model/afhqdog.pkl'
+    # network_pkl = 'model/afhqwild.pkl'
+    # network_pkl = 'model/ffhq_stylegan_ada.pkl'
     device = torch.device('cuda')
     M=Manipulator()
     M.device=device
@@ -358,16 +375,22 @@ if __name__ == "__main__":
     M.GenerateS(num_img=num_img)
     M.GetCodeMS()
     np.set_printoptions(suppress=True)
-    
+
+    print("dlatents:")
+    for i in range(len(M.dlatents)):
+        print(M.dlatents[i].shape)
+
     #%%
     M.alpha=[24,16,8,0,-8,-16,-24]
     M.step=len(M.alpha)
     M.img_index=0
     M.num_images=10
-    lindex,bname=6,501
+    # lindex,bname=6,501
+    lindex, bname = 0, 0
 #    M.
     M.manipulate_layers=[lindex]
     codes,out=M.EditOneC(bname) #dlatent_tmp
+    print("out:", out.shape)
     tmp=str(M.manipulate_layers)+'_'+str(bname)
     M.Vis(tmp,'c',out)
 

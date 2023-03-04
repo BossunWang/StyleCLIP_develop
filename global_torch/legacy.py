@@ -168,7 +168,7 @@ def convert_tf_generator(tf_G):
     #for name, value in tf_params.items(): print(f'{name:<50s}{list(value.shape)}')
 
     # Convert params.
-    from training import networks
+    from global_torch.training import networks
     G = networks.Generator(**kwargs).eval().requires_grad_(False)
     # pylint: disable=unnecessary-lambda
     _populate_module_params(G,
@@ -268,7 +268,7 @@ def convert_tf_discriminator(tf_D):
     #for name, value in tf_params.items(): print(f'{name:<50s}{list(value.shape)}')
 
     # Convert params.
-    from training import networks
+    from global_torch.training import networks
     D = networks.Discriminator(**kwargs).eval().requires_grad_(False)
     # pylint: disable=unnecessary-lambda
     _populate_module_params(D,
