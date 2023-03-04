@@ -420,6 +420,7 @@ class SynthesisBlock(torch.nn.Module):
             if encoded_styles is None:
                 x = x.unsqueeze(0).repeat([ws.shape[0], 1, 1, 1])
             else:
+                # fill encoded_styles to x
                 x = x.unsqueeze(0).repeat([encoded_styles['conv1_resolution_4'].shape[0], 1, 1, 1])
         else:
             # misc.assert_shape(x, [None, self.in_channels, self.resolution // 2, self.resolution // 2]) # not need to be squre 

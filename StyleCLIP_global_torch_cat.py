@@ -74,7 +74,7 @@ def main():
     os.makedirs("manipulated_results", exist_ok=True)
 
     # input dataset name
-    dataset_name = 'ffhq'  # @param ['ffhq'] {allow-input: true}
+    dataset_name = 'afhqcat'  # @param ['ffhq'] {allow-input: true}
 
     if not os.path.isfile('global_torch/model/' + dataset_name + '.pkl'):
         url = 'https://nvlabs-fi-cdn.nvidia.com/stylegan2/networks/'
@@ -100,7 +100,7 @@ def main():
 
     file_path = 'global_torch/npy/' + dataset_name + '/'
     # fs3 = np.load(file_path + 'fs3.npy')
-    fs3 = np.load('global_torch/npy/ffhq_stylegan_ada/' + 'fs3.npy')
+    fs3 = np.load('global_torch/npy/afhq_stylegan_ada/' + 'fs3.npy')
     print("fs3", fs3.shape)
 
     # @title e4e setup

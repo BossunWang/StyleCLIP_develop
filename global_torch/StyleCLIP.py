@@ -163,19 +163,21 @@ def GetDt(classnames,model):
 
 
 def GetBoundary(fs3,dt,M,threshold):
-    tmp=np.dot(fs3,dt)
-    
+    tmp=np.dot(fs3,dt) # fs3 is (-1, 512), dt is (512,) -> result is (-1,)
+
     ds_imp=copy.copy(tmp)
     select=np.abs(tmp)<threshold
+    total_num = len(tmp)
     num_c=np.sum(~select)
 
 
     ds_imp[select]=0
     tmp=np.abs(ds_imp).max()
+    print("max tmp:", tmp)
     ds_imp/=tmp
     
     boundary_tmp2=SplitS(ds_imp,M,if_std=True)
-    print('num of channels being manipulated:',num_c)
+    print('num of channels being manipulated:{} / {}'.format(num_c, total_num))
     return boundary_tmp2,num_c
 
 #%%
