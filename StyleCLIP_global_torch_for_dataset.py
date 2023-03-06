@@ -374,7 +374,10 @@ def run(source_neutral_dir
         , net
         , clip_model
         , M
-        , ort_session):
+        , ort_session
+        , minc=100
+        , maxc=500
+        , save_path_direct=False):
     for root, dirs, files in os.walk(source_neutral_dir):
         for name in files:
             image_path = os.path.join(root, name)
@@ -434,7 +437,7 @@ def run(source_neutral_dir
                     best_num_c = 0
                     for b in betas:
                         num_c = GetBoundaryNum(fs3, dt, b)
-                        if 100 < num_c < 500:
+                        if minc < num_c < maxc:
                             best_beta = b
                             best_num_c = num_c
 
@@ -445,7 +448,9 @@ def run(source_neutral_dir
                     print("Generating Frames:")
                     for ai, alpha in tqdm(enumerate(alphas), total=num_frames):
                         image_name = name.replace(".jpg", "_{}_ev_{}.jpg".format(tj, ai))
-                        if ai <= 2 and ti == 4 and tj == 0:
+                        if save_path_direct:
+                            save_path = os.path.join(target_dir, emotion_list[ti], image_name)
+                        elif ai <= 2 and ti == 4 and tj == 0:
                             save_path = os.path.join(target_dir, emotion_list[-1], image_name)
                         elif ai >= 3:
                             save_path = os.path.join(target_dir, emotion_list[ti], image_name)
@@ -550,6 +555,195 @@ def run_neutral(source_neutral_dir
                     cv2.imwrite(save_path, output_image)
 
 
+def gen_RAFDB_data(experiment_type, resize_dims, EXPERIMENT_ARGS, fs3, net, clip_model, M, predictor, ort_session):
+    emotion_list = ["surprise", "fear", "disgust", "happy", "sad", "angry", "neutral"]
+    # input text description
+    neutral = 'face'  # @param {type:"string"}
+    target_prompt_list = [
+        ['surprised face', 'shocked face'],
+        ['scared face'],
+        ['vomiting face'],
+        ['happy face', 'happy and wrinkle face'],
+        ['sad face', 'depressed face'],
+        ['angry face'],
+    ]
+
+    target_alpha = 6.  # @param {type:"number"}
+    num_frames = 10  # @param {type:"number"}
+    alphas = np.linspace(0, target_alpha, num_frames)
+    # select beta adaptively
+    min_beta = 0.08
+    max_beta = 0.3
+    betas = np.linspace(min_beta, max_beta, 10)
+
+    source_train_neutral_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/org_train_class/neutral"
+    source_test_neutral_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/org_test_class/neutral"
+    target_train_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated/train_class_aligned"
+    target_test_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated/test_class_aligned"
+    target_latent_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated_latents"
+    os.makedirs(target_latent_dir, exist_ok=True)
+    os.makedirs(target_train_dir, exist_ok=True)
+    os.makedirs(target_test_dir, exist_ok=True)
+
+    for emotion_name in emotion_list:
+        os.makedirs(os.path.join(target_train_dir, emotion_name), exist_ok=True)
+        os.makedirs(os.path.join(target_test_dir, emotion_name), exist_ok=True)
+
+    run(source_train_neutral_dir
+        , target_train_dir
+        , target_latent_dir
+        , emotion_list
+        , target_prompt_list
+        , neutral
+        , experiment_type
+        , resize_dims
+        , EXPERIMENT_ARGS
+        , alphas
+        , betas
+        , fs3
+        , num_frames
+        , predictor
+        , net
+        , clip_model
+        , M
+        , ort_session)
+
+    run(source_test_neutral_dir
+        , target_test_dir
+        , target_latent_dir
+        , emotion_list
+        , target_prompt_list
+        , neutral
+        , experiment_type
+        , resize_dims
+        , EXPERIMENT_ARGS
+        , alphas
+        , betas
+        , fs3
+        , num_frames
+        , predictor
+        , net
+        , clip_model
+        , M
+        , ort_session)
+
+
+def gen_RAFDB_data_v2(experiment_type, resize_dims, EXPERIMENT_ARGS, fs3, net, clip_model, M, predictor, ort_session):
+    emotion_list = ["happy"]
+    # input text description
+    neutral = 'face'  # @param {type:"string"}
+    target_prompt_list = [
+        ['Laugh heartily face'],
+    ]
+
+    target_alpha = 6.  # @param {type:"number"}
+    num_frames = 6  # @param {type:"number"}
+    alphas = np.linspace(2, target_alpha, num_frames)
+    # select beta adaptively
+    min_beta = 0.1
+    max_beta = 0.3
+    betas = np.linspace(min_beta, max_beta, 10)
+
+    source_train_neutral_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/org_train_class/neutral"
+    source_test_neutral_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/org_test_class/neutral"
+    target_train_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated_v2/train_class_aligned"
+    target_test_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated_v2/test_class_aligned"
+    target_latent_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated_latents"
+    os.makedirs(target_latent_dir, exist_ok=True)
+    os.makedirs(target_train_dir, exist_ok=True)
+    os.makedirs(target_test_dir, exist_ok=True)
+
+    for emotion_name in emotion_list:
+        os.makedirs(os.path.join(target_train_dir, emotion_name), exist_ok=True)
+        os.makedirs(os.path.join(target_test_dir, emotion_name), exist_ok=True)
+
+    run(source_train_neutral_dir
+        , target_train_dir
+        , target_latent_dir
+        , emotion_list
+        , target_prompt_list
+        , neutral
+        , experiment_type
+        , resize_dims
+        , EXPERIMENT_ARGS
+        , alphas
+        , betas
+        , fs3
+        , num_frames
+        , predictor
+        , net
+        , clip_model
+        , M
+        , ort_session
+        , minc=10
+        , maxc=200
+        , save_path_direct=True)
+
+    run(source_test_neutral_dir
+        , target_test_dir
+        , target_latent_dir
+        , emotion_list
+        , target_prompt_list
+        , neutral
+        , experiment_type
+        , resize_dims
+        , EXPERIMENT_ARGS
+        , alphas
+        , betas
+        , fs3
+        , num_frames
+        , predictor
+        , net
+        , clip_model
+        , M
+        , ort_session
+        , minc=10
+        , maxc=50
+        , save_path_direct=True)
+
+
+def gen_FFHQ_data(experiment_type, resize_dims, EXPERIMENT_ARGS, fs3, net, clip_model, M, predictor, ort_session):
+    emotion_list = ["neutral"]
+    target_prompt_list = [
+        ['bored face'],
+    ]
+
+    target_alpha = 6.  # @param {type:"number"}
+    num_frames = 10  # @param {type:"number"}
+    alphas = np.linspace(0, target_alpha, num_frames)
+    # select beta adaptively
+    min_beta = 0.08
+    max_beta = 0.3
+    betas = np.linspace(min_beta, max_beta, 10)
+
+    source_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/FFHQ/images256x256"
+    target_dir = "/media/glory/Bossun_D/dataset/face_dataset/FFHQ/generate"
+    target_latent_dir = "/media/glory/Bossun_D/dataset/face_dataset/FFHQ/target_latents"
+    os.makedirs(target_latent_dir, exist_ok=True)
+    os.makedirs(target_dir, exist_ok=True)
+    for emotion_name in emotion_list:
+        os.makedirs(os.path.join(target_dir, emotion_name), exist_ok=True)
+
+    run_neutral(source_dir
+                , target_dir
+                , target_latent_dir
+                , emotion_list
+                , target_prompt_list
+                , "happy face"
+                , experiment_type
+                , resize_dims
+                , EXPERIMENT_ARGS
+                , target_alpha
+                , betas
+                , fs3
+                , num_frames
+                , predictor
+                , net
+                , clip_model
+                , M
+                , ort_session)
+
+
 def main():
     # input dataset name
     dataset_name = 'ffhq'  # @param ['ffhq'] {allow-input: true}
@@ -600,114 +794,13 @@ def main():
     net.cuda()
     print('Model successfully loaded!')
 
-    emotion_list = ["surprise", "fear", "disgust", "happy", "sad", "angry", "neutral"]
-    # input text description
-    neutral = 'face'  # @param {type:"string"}
-    target_prompt_list = [
-        ['surprised face', 'shocked face'],
-        ['scared face'],
-        ['vomiting face'],
-        ['happy face', 'happy and wrinkle face'],
-        ['sad face', 'depressed face'],
-        ['angry face'],
-    ]
-
     predictor = dlib.shape_predictor("pretrained/shape_predictor_68_face_landmarks.dat")
-
-    target_alpha = 6.  # @param {type:"number"}
-    num_frames = 10  # @param {type:"number"}
-    alphas = np.linspace(0, target_alpha, num_frames)
-    # select beta adaptively
-    min_beta = 0.08
-    max_beta = 0.3
-    betas = np.linspace(min_beta, max_beta, 10)
-
     # load yolov5 face onnx model
     onnx_path = "../Face_Detection_Project/yolov5_face/log_yolov5n-0.5/train_uc_append_masked_data/exp/weights/best_640.onnx"
     ort_session = onnxruntime.InferenceSession(onnx_path)
 
-    # source_train_neutral_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/org_train_class/neutral"
-    # source_test_neutral_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/org_test_class/neutral"
-    # target_train_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated/train_class_aligned"
-    # target_test_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated/test_class_aligned"
-    # target_latent_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated_latents"
-    # os.makedirs(target_latent_dir, exist_ok=True)
-    # os.makedirs(target_train_dir, exist_ok=True)
-    # os.makedirs(target_test_dir, exist_ok=True)
-    #
-    # for emotion_name in emotion_list:
-    #     os.makedirs(os.path.join(target_train_dir, emotion_name), exist_ok=True)
-    #     os.makedirs(os.path.join(target_test_dir, emotion_name), exist_ok=True)
-
-    # run(source_train_neutral_dir
-    #     , target_train_dir
-    #     , target_latent_dir
-    #     , emotion_list
-    #     , target_prompt_list
-    #     , neutral
-    #     , experiment_type
-    #     , resize_dims
-    #     , EXPERIMENT_ARGS
-    #     , alphas
-    #     , betas
-    #     , fs3
-    #     , num_frames
-    #     , predictor
-    #     , net
-    #     , clip_model
-    #     , M
-    #     , ort_session)
-    #
-    # run(source_test_neutral_dir
-    #     , target_test_dir
-    #     , target_latent_dir
-    #     , emotion_list
-    #     , target_prompt_list
-    #     , neutral
-    #     , experiment_type
-    #     , resize_dims
-    #     , EXPERIMENT_ARGS
-    #     , alphas
-    #     , betas
-    #     , fs3
-    #     , num_frames
-    #     , predictor
-    #     , net
-    #     , clip_model
-    #     , M
-    #     , ort_session)
-
-    emotion_list = ["neutral"]
-    target_prompt_list = [
-        ['bored face'],
-    ]
-
-    source_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/FFHQ/images256x256"
-    target_dir = "/media/glory/Bossun_D/dataset/face_dataset/FFHQ/generate"
-    target_latent_dir = "/media/glory/Bossun_D/dataset/face_dataset/FFHQ/target_latents"
-    os.makedirs(target_latent_dir, exist_ok=True)
-    os.makedirs(target_dir, exist_ok=True)
-    for emotion_name in emotion_list:
-        os.makedirs(os.path.join(target_dir, emotion_name), exist_ok=True)
-
-    run_neutral(source_dir
-                , target_dir
-                , target_latent_dir
-                , emotion_list
-                , target_prompt_list
-                , "happy face"
-                , experiment_type
-                , resize_dims
-                , EXPERIMENT_ARGS
-                , target_alpha
-                , betas
-                , fs3
-                , num_frames
-                , predictor
-                , net
-                , clip_model
-                , M
-                , ort_session)
+    # gen_RAFDB_data(experiment_type, resize_dims, EXPERIMENT_ARGS, fs3, net, clip_model, M, predictor, ort_session)
+    gen_RAFDB_data_v2(experiment_type, resize_dims, EXPERIMENT_ARGS, fs3, net, clip_model, M, predictor, ort_session)
 
 
 if __name__ == '__main__':

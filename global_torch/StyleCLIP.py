@@ -157,7 +157,7 @@ def GetDt(classnames,model):
     dt=dt.cpu().numpy()
     
 
-    print(np.linalg.norm(dt))
+    print("norm of dt:", np.linalg.norm(dt))
     dt=dt/np.linalg.norm(dt)
     return dt
 
