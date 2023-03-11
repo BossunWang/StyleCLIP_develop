@@ -96,8 +96,8 @@ def main():
     plt.savefig("score_laugh_heartily_face_resample")
     plt.cla()
 
-    target_train_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated_v3/train_class_aligned"
-    target_test_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated_v3/test_class_aligned"
+    target_train_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated_test/train_class_aligned"
+    target_test_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated_test/test_class_aligned"
 
     os.makedirs(target_train_dir, exist_ok=True)
     os.makedirs(target_test_dir, exist_ok=True)

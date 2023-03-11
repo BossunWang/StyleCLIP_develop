@@ -702,6 +702,80 @@ def gen_RAFDB_data_v2(experiment_type, resize_dims, EXPERIMENT_ARGS, fs3, net, c
         , save_path_direct=True)
 
 
+def gen_RAFDB_data_v3(experiment_type, resize_dims, EXPERIMENT_ARGS, fs3, net, clip_model, M, predictor, ort_session):
+    emotion_list = ["happy"]
+    # input text description
+    neutral = 'face'  # @param {type:"string"}
+    target_prompt_list = [
+        ['Laugh heartily face'],
+    ]
+
+    target_alpha = 6.  # @param {type:"number"}
+    num_frames = 10  # @param {type:"number"}
+    alphas = np.linspace(1, target_alpha, num_frames)
+    # select beta adaptively
+    min_beta = 0.1
+    max_beta = 0.3
+    betas = np.linspace(min_beta, max_beta, 10)
+
+    source_train_neutral_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/org_train_class/neutral"
+    source_test_neutral_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/org_test_class/neutral"
+    target_train_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated_v3/train_class_aligned"
+    target_test_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated_v3/test_class_aligned"
+    target_latent_dir = "/media/glory/46845c74-37f7-48d7-8b72-e63c83fa4f68/face_dataset/emotion/RAF-DB/basic-20201119T055425Z-001/basic/generated_latents"
+    os.makedirs(target_latent_dir, exist_ok=True)
+    os.makedirs(target_train_dir, exist_ok=True)
+    os.makedirs(target_test_dir, exist_ok=True)
+
+    for emotion_name in emotion_list:
+        os.makedirs(os.path.join(target_train_dir, emotion_name), exist_ok=True)
+        os.makedirs(os.path.join(target_test_dir, emotion_name), exist_ok=True)
+
+    run(source_train_neutral_dir
+        , target_train_dir
+        , target_latent_dir
+        , emotion_list
+        , target_prompt_list
+        , neutral
+        , experiment_type
+        , resize_dims
+        , EXPERIMENT_ARGS
+        , alphas
+        , betas
+        , fs3
+        , num_frames
+        , predictor
+        , net
+        , clip_model
+        , M
+        , ort_session
+        , minc=10
+        , maxc=200
+        , save_path_direct=True)
+
+    run(source_test_neutral_dir
+        , target_test_dir
+        , target_latent_dir
+        , emotion_list
+        , target_prompt_list
+        , neutral
+        , experiment_type
+        , resize_dims
+        , EXPERIMENT_ARGS
+        , alphas
+        , betas
+        , fs3
+        , num_frames
+        , predictor
+        , net
+        , clip_model
+        , M
+        , ort_session
+        , minc=10
+        , maxc=200
+        , save_path_direct=True)
+
+
 def gen_FFHQ_data(experiment_type, resize_dims, EXPERIMENT_ARGS, fs3, net, clip_model, M, predictor, ort_session):
     emotion_list = ["neutral"]
     target_prompt_list = [
@@ -800,7 +874,8 @@ def main():
     ort_session = onnxruntime.InferenceSession(onnx_path)
 
     # gen_RAFDB_data(experiment_type, resize_dims, EXPERIMENT_ARGS, fs3, net, clip_model, M, predictor, ort_session)
-    gen_RAFDB_data_v2(experiment_type, resize_dims, EXPERIMENT_ARGS, fs3, net, clip_model, M, predictor, ort_session)
+    # gen_RAFDB_data_v2(experiment_type, resize_dims, EXPERIMENT_ARGS, fs3, net, clip_model, M, predictor, ort_session)
+    gen_RAFDB_data_v3(experiment_type, resize_dims, EXPERIMENT_ARGS, fs3, net, clip_model, M, predictor, ort_session)
 
 
 if __name__ == '__main__':
